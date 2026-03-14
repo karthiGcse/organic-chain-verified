@@ -121,9 +121,14 @@ export default function Dashboard() {
   }, [account, loadDashboardData]);
 
   const handleRegisterFarmer = async () => {
-    if (!contract) { toast.error("Connect your wallet first"); return; }
-    setLoading(true);
+    if (!account) {
+      toast.error("Connect your wallet first");
+      return;
+    }
+
+    setTxLoading(true);
     try {
+      const contract = await getSignerContract();
       const tx = await contract.registerFarmer(farmerName, farmerLocation, farmerCert);
       toast.info("Transaction submitted. Waiting for confirmation...");
       const receipt = await tx.wait();
@@ -135,11 +140,15 @@ export default function Dashboard() {
           </a>
         </div>
       );
-      setFarmerName(""); setFarmerLocation(""); setFarmerCert("");
-      loadData();
+      setFarmerName("");
+      setFarmerLocation("");
+      setFarmerCert("");
+      await loadFarmerStatus(account);
     } catch (err: any) {
       toast.error(err?.reason || err?.message || "Transaction failed");
-    } finally { setLoading(false); }
+    } finally {
+      setTxLoading(false);
+    }
   };
 
   const handleAddProduct = async () => {
