@@ -249,7 +249,9 @@ export default function Dashboard() {
                 <div className="p-3 rounded-lg bg-secondary/10 border border-secondary/20 text-sm">
                   <p className="font-semibold text-primary">{farmerInfo.name}</p>
                   <p className="text-muted-foreground text-xs">{farmerInfo.location}</p>
-                  <Badge variant="secondary" className="mt-1 text-xs">Registered ✓</Badge>
+                  <Badge variant={farmerStatus === "Registered" ? "default" : "secondary"} className="mt-1 text-xs">
+                    {dataLoading ? "Loading..." : farmerStatus}
+                  </Badge>
                 </div>
               )}
             </CardContent>
