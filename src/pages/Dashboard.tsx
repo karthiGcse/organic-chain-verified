@@ -152,9 +152,14 @@ export default function Dashboard() {
   };
 
   const handleAddProduct = async () => {
-    if (!contract) { toast.error("Connect your wallet first"); return; }
-    setLoading(true);
+    if (!account) {
+      toast.error("Connect your wallet first");
+      return;
+    }
+
+    setTxLoading(true);
     try {
+      const contract = await getSignerContract();
       const tx = await contract.addProduct(prodId, prodName, prodCategory, prodLocation, prodCert, prodImage || "");
       toast.info("Transaction submitted. Waiting for confirmation...");
       const receipt = await tx.wait();
@@ -166,12 +171,19 @@ export default function Dashboard() {
           </a>
         </div>
       );
-      setProdId(""); setProdName(""); setProdCategory(""); setProdLocation(""); setProdCert(""); setProdImage("");
+      setProdId("");
+      setProdName("");
+      setProdCategory("");
+      setProdLocation("");
+      setProdCert("");
+      setProdImage("");
       setAddProductOpen(false);
-      loadData();
+      await loadProducts(account);
     } catch (err: any) {
       toast.error(err?.reason || err?.message || "Transaction failed");
-    } finally { setLoading(false); }
+    } finally {
+      setTxLoading(false);
+    }
   };
 
   return (
