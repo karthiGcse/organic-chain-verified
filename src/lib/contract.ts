@@ -4,6 +4,7 @@ export const SEPOLIA_RPC = "https://rpc.sepolia.org";
 export const ETHERSCAN_BASE = "https://sepolia.etherscan.io";
 
 export const CONTRACT_ABI = [
+  // Write functions
   {
     inputs: [{ internalType: "string", name: "_productId", type: "string" }, { internalType: "string", name: "_name", type: "string" }, { internalType: "string", name: "_category", type: "string" }, { internalType: "string", name: "_farmLocation", type: "string" }, { internalType: "string", name: "_certNumber", type: "string" }, { internalType: "string", name: "_imageHash", type: "string" }],
     name: "addProduct", outputs: [], stateMutability: "nonpayable", type: "function",
@@ -19,6 +20,31 @@ export const CONTRACT_ABI = [
   {
     inputs: [{ internalType: "string", name: "_name", type: "string" }, { internalType: "string", name: "_location", type: "string" }, { internalType: "string", name: "_certId", type: "string" }],
     name: "registerFarmer", outputs: [], stateMutability: "nonpayable", type: "function",
+  },
+  // Read functions
+  {
+    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    name: "allFarmers", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    name: "allProductIds", outputs: [{ internalType: "string", name: "", type: "string" }], stateMutability: "view", type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "", type: "address" }, { internalType: "uint256", name: "", type: "uint256" }],
+    name: "farmerProducts", outputs: [{ internalType: "string", name: "", type: "string" }], stateMutability: "view", type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "", type: "address" }],
+    name: "farmers",
+    outputs: [
+      { internalType: "string", name: "name", type: "string" },
+      { internalType: "string", name: "location", type: "string" },
+      { internalType: "string", name: "certificationId", type: "string" },
+      { internalType: "bool", name: "isVerified", type: "bool" },
+      { internalType: "uint256", name: "registeredAt", type: "uint256" },
+    ],
+    stateMutability: "view", type: "function",
   },
   {
     inputs: [{ internalType: "address", name: "_farmer", type: "address" }],
@@ -70,22 +96,31 @@ export const CONTRACT_ABI = [
     inputs: [], name: "getTotalProducts",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function",
   },
-  {
-    inputs: [{ internalType: "address", name: "", type: "address" }],
-    name: "farmers",
-    outputs: [
-      { internalType: "string", name: "name", type: "string" },
-      { internalType: "string", name: "location", type: "string" },
-      { internalType: "string", name: "certificationId", type: "string" },
-      { internalType: "bool", name: "isVerified", type: "bool" },
-      { internalType: "uint256", name: "registeredAt", type: "uint256" },
-    ],
-    stateMutability: "view", type: "function",
-  },
+  { inputs: [], name: "owner", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
   {
     inputs: [{ internalType: "string", name: "_productId", type: "string" }],
     name: "verifyOrganic",
     outputs: [{ internalType: "bool", name: "", type: "bool" }], stateMutability: "view", type: "function",
   },
-  { inputs: [], name: "owner", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
+  // Events
+  {
+    anonymous: false,
+    inputs: [{ indexed: false, internalType: "address", name: "farmer", type: "address" }, { indexed: false, internalType: "string", name: "name", type: "string" }, { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }],
+    name: "FarmerRegistered", type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: false, internalType: "string", name: "productId", type: "string" }, { indexed: false, internalType: "string", name: "name", type: "string" }, { indexed: false, internalType: "address", name: "farmer", type: "address" }, { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }],
+    name: "ProductAdded", type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: false, internalType: "string", name: "productId", type: "string" }, { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }],
+    name: "QRGenerated", type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: false, internalType: "string", name: "productId", type: "string" }, { indexed: false, internalType: "string", name: "stageName", type: "string" }, { indexed: false, internalType: "string", name: "location", type: "string" }, { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }],
+    name: "StageAdded", type: "event",
+  },
 ] as const;
