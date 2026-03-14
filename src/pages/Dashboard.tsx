@@ -241,8 +241,8 @@ export default function Dashboard() {
                 <Label htmlFor="fCert">Certification ID</Label>
                 <Input id="fCert" value={farmerCert} onChange={e => setFarmerCert(e.target.value)} placeholder="CERT-2024-001" />
               </div>
-              <Button onClick={handleRegisterFarmer} disabled={loading || !account} className="w-full bg-primary text-primary-foreground">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              <Button onClick={handleRegisterFarmer} disabled={txLoading || !account} className="w-full bg-primary text-primary-foreground">
+                {txLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Register on Blockchain
               </Button>
               {farmerInfo && (
