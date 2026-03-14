@@ -36,28 +36,45 @@ export default function Dashboard() {
 
   const [addProductOpen, setAddProductOpen] = useState(false);
 
+  // Use the connected wallet's provider for reads when available, fall back to readContract
+  const getReadContract = useCallback(() => {
+    if (contract) return contract; // signer-connected contract can also read
+    return readContract;
+  }, [contract, readContract]);
+
   useEffect(() => {
-    if (account && readContract) loadData();
-  }, [account, readContract]);
+    if (account) loadData();
+  }, [account, contract, readContract]);
 
   const loadData = async () => {
-    if (!readContract || !account) return;
+    if (!account) return;
+    const rc = getReadContract();
+    if (!rc) return;
     try {
-      const farmer = await readContract.farmers(account);
+      const farmer = await rc.farmers(account);
       if (farmer.registeredAt > 0n) {
         setFarmerInfo({ name: farmer.name, location: farmer.location, certId: farmer.certificationId, isVerified: farmer.isVerified });
+        setIsRegistered(true);
+      } else {
+        setFarmerInfo(null);
+        setIsRegistered(false);
       }
-      const productIds = await readContract.getFarmerProducts(account);
+    } catch {
+      setFarmerInfo(null);
+      setIsRegistered(false);
+    }
+    try {
+      const productIds = await rc.getFarmerProducts(account);
       const prods = await Promise.all(
         productIds.map(async (id: string) => {
           try {
-            const p = await readContract.getProduct(id);
+            const p = await rc.getProduct(id);
             return { productId: p.productId, name: p.name, category: p.category, farmLocation: p.farmLocation, isOrganic: p.isOrganic, registeredAt: Number(p.registeredAt) };
           } catch { return null; }
         })
       );
       setProducts(prods.filter(Boolean));
-    } catch { /* farmer not registered yet */ }
+    } catch { setProducts([]); }
   };
 
   const handleRegisterFarmer = async () => {
