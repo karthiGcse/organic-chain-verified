@@ -316,7 +316,12 @@ export default function Dashboard() {
               </Dialog>
             </CardHeader>
             <CardContent>
-              {products.length === 0 ? (
+              {dataLoading ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Loader2 className="h-12 w-12 mx-auto mb-3 animate-spin" />
+                  <p>Loading...</p>
+                </div>
+              ) : products.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>No products registered yet.</p>
