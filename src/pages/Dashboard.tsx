@@ -305,8 +305,8 @@ export default function Dashboard() {
                       <Label>Image Hash (optional)</Label>
                       <Input value={prodImage} onChange={e => setProdImage(e.target.value)} placeholder="IPFS hash or URL" />
                     </div>
-                    <Button onClick={handleAddProduct} disabled={loading} className="w-full bg-primary text-primary-foreground">
-                      {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    <Button onClick={handleAddProduct} disabled={txLoading} className="w-full bg-primary text-primary-foreground">
+                      {txLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                       Add to Blockchain
                     </Button>
                   </div>
