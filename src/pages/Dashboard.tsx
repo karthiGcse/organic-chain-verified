@@ -11,15 +11,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { ETHERSCAN_BASE } from "@/lib/contract";
+import { getContract, getSignerContract } from "@/hooks/useContract";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 
+type ProductItem = {
+  productId: string;
+  name: string;
+  category: string;
+  farmLocation: string;
+  isOrganic: boolean;
+  registeredAt: number;
+};
+
 export default function Dashboard() {
-  const { account, contract, readContract, provider } = useWeb3();
-  const [loading, setLoading] = useState(false);
-  const [products, setProducts] = useState<any[]>([]);
-  const [farmerInfo, setFarmerInfo] = useState<any>(null);
-  const [isRegistered, setIsRegistered] = useState(false);
+  const { account } = useWeb3();
+  const [txLoading, setTxLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [farmerInfo, setFarmerInfo] = useState<{ name: string; location: string; certId: string; isVerified: boolean } | null>(null);
+  const [farmerStatus, setFarmerStatus] = useState("Not Registered");
 
   // Register farmer form
   const [farmerName, setFarmerName] = useState("");
@@ -36,46 +48,77 @@ export default function Dashboard() {
 
   const [addProductOpen, setAddProductOpen] = useState(false);
 
-  // Use the connected wallet's provider for reads when available, fall back to readContract
-  const getReadContract = useCallback(() => {
-    if (contract) return contract; // signer-connected contract can also read
-    return readContract;
-  }, [contract, readContract]);
-
-  useEffect(() => {
-    if (account) loadData();
-  }, [account, contract, readContract]);
-
-  const loadData = async () => {
-    if (!account) return;
-    const rc = getReadContract();
-    if (!rc) return;
+  const loadFarmerStatus = useCallback(async (address: string) => {
     try {
-      const farmer = await rc.farmers(account);
-      if (farmer.registeredAt > 0n) {
-        setFarmerInfo({ name: farmer.name, location: farmer.location, certId: farmer.certificationId, isVerified: farmer.isVerified });
-        setIsRegistered(true);
+      const contract = await getContract();
+      const farmer = await contract.farmers(address);
+      if (farmer.isVerified === true) {
+        setFarmerStatus("Registered");
       } else {
-        setFarmerInfo(null);
-        setIsRegistered(false);
+        setFarmerStatus("Not Registered");
       }
-    } catch {
+      setFarmerInfo({
+        name: farmer.name,
+        location: farmer.location,
+        certId: farmer.certificationId,
+        isVerified: farmer.isVerified,
+      });
+    } catch (error: any) {
+      setFarmerStatus("Not Registered");
       setFarmerInfo(null);
-      setIsRegistered(false);
+      if (error?.message) {
+        console.warn("Failed to load farmer status:", error.message);
+      }
     }
+  }, []);
+
+  const loadProducts = useCallback(async (address: string) => {
     try {
-      const productIds = await rc.getFarmerProducts(account);
-      const prods = await Promise.all(
-        productIds.map(async (id: string) => {
-          try {
-            const p = await rc.getProduct(id);
-            return { productId: p.productId, name: p.name, category: p.category, farmLocation: p.farmLocation, isOrganic: p.isOrganic, registeredAt: Number(p.registeredAt) };
-          } catch { return null; }
+      const contract = await getContract();
+      const productIds: string[] = await contract.getFarmerProducts(address);
+      const productData = await Promise.all(
+        productIds.map(async (id) => {
+          const p = await contract.getProduct(id);
+          return {
+            productId: p.productId,
+            name: p.name,
+            category: p.category,
+            farmLocation: p.farmLocation,
+            isOrganic: p.isOrganic,
+            registeredAt: Number(p.registeredAt),
+          };
         })
       );
-      setProducts(prods.filter(Boolean));
-    } catch { setProducts([]); }
-  };
+      setProducts(productData);
+      setTotalProducts(productIds.length);
+    } catch (error: any) {
+      setProducts([]);
+      setTotalProducts(0);
+      if (error?.message) {
+        console.warn("Failed to load products:", error.message);
+      }
+    }
+  }, []);
+
+  const loadDashboardData = useCallback(async (address: string) => {
+    setDataLoading(true);
+    try {
+      await Promise.all([loadFarmerStatus(address), loadProducts(address)]);
+    } finally {
+      setDataLoading(false);
+    }
+  }, [loadFarmerStatus, loadProducts]);
+
+  useEffect(() => {
+    if (!account) {
+      setFarmerStatus("Not Registered");
+      setFarmerInfo(null);
+      setProducts([]);
+      setTotalProducts(0);
+      return;
+    }
+    loadDashboardData(account);
+  }, [account, loadDashboardData]);
 
   const handleRegisterFarmer = async () => {
     if (!contract) { toast.error("Connect your wallet first"); return; }
