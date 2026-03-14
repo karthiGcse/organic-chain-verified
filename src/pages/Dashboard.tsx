@@ -137,7 +137,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           {[
             { icon: Package, label: "Total Products", value: products.length, color: "text-primary" },
-            { icon: UserCheck, label: "Status", value: farmerInfo ? "Registered" : "Not Registered", color: "text-secondary" },
+            { icon: UserCheck, label: "Status", value: isRegistered ? "Registered" : "Not Registered", color: "text-secondary" },
             { icon: Clock, label: "Verified", value: products.filter(p => p?.isOrganic).length, color: "text-accent" },
           ].map((s) => (
             <Card key={s.label} className="glass">
