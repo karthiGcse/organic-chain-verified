@@ -1,6 +1,7 @@
 export const CONTRACT_ADDRESS = "0x61e56d103678d0e0e75c86f90Bb9FdF0c5CD65f3";
 export const SEPOLIA_CHAIN_ID = 11155111;
-export const SEPOLIA_RPC = "https://ethereum-sepolia-rpc.publicnode.com";
+export const SEPOLIA_RPC = "https://rpc.sepolia.org";
+export const SEPOLIA_RPC_BACKUP = "https://sepolia.gateway.tenderly.co";
 export const ETHERSCAN_BASE = "https://sepolia.etherscan.io";
 
 export const CONTRACT_ABI = [

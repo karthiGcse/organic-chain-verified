@@ -1,7 +1,25 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { BrowserProvider, Contract, formatEther, JsonRpcProvider } from "ethers";
-import { CONTRACT_ADDRESS, CONTRACT_ABI, SEPOLIA_CHAIN_ID, SEPOLIA_RPC } from "@/lib/contract";
+import { CONTRACT_ADDRESS, CONTRACT_ABI, SEPOLIA_CHAIN_ID, SEPOLIA_RPC, SEPOLIA_RPC_BACKUP } from "@/lib/contract";
 import { toast } from "sonner";
+
+async function createReadProvider(): Promise<JsonRpcProvider> {
+  const primary = new JsonRpcProvider(SEPOLIA_RPC);
+  try {
+    await primary.getBlockNumber();
+    return primary;
+  } catch {
+    console.warn("Primary RPC failed, trying backup...");
+    const backup = new JsonRpcProvider(SEPOLIA_RPC_BACKUP);
+    try {
+      await backup.getBlockNumber();
+      return backup;
+    } catch {
+      console.warn("Backup RPC also failed, returning primary as fallback");
+      return primary;
+    }
+  }
+}
 
 interface Web3State {
   account: string | null;
@@ -22,11 +40,18 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   const [balance, setBalance] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [contract, setContract] = useState<Contract | null>(null);
+  const [readContract, setReadContract] = useState<Contract | null>(null);
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
+  const initRef = useRef(false);
 
-  // Read-only contract for public pages
-  const readProvider = new JsonRpcProvider(SEPOLIA_RPC);
-  const readContract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
+  // Initialize read-only provider with fallback
+  useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
+    createReadProvider().then((rp) => {
+      setReadContract(new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, rp));
+    }).catch(console.error);
+  }, []);
 
   const connectWallet = useCallback(async () => {
     if (!(window as any).ethereum) {
