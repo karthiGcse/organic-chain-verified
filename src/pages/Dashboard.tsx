@@ -15,10 +15,11 @@ import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 
 export default function Dashboard() {
-  const { account, contract, readContract } = useWeb3();
+  const { account, contract, readContract, provider } = useWeb3();
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [farmerInfo, setFarmerInfo] = useState<any>(null);
+  const [isRegistered, setIsRegistered] = useState(false);
 
   // Register farmer form
   const [farmerName, setFarmerName] = useState("");
