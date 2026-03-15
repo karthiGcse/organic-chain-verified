@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { ethers } from "ethers";
 import { motion } from "framer-motion";
 import { Package, UserCheck, Clock, Plus, Loader2, ExternalLink, Tractor } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,27 +11,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWeb3 } from "@/contexts/Web3Context";
-import { ETHERSCAN_BASE } from "@/lib/contract";
-import { getContract, getSignerContract } from "@/hooks/useContract";
+import { CONTRACT_ABI, ETHERSCAN_BASE } from "@/lib/contract";
+import { getSignerContract } from "@/hooks/useContract";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 
-type ProductItem = {
-  productId: string;
+const CONTRACT_ADDRESS = "0x61e56d103678d0e0e75c86f90Bb9FdF0c5CD65f3";
+const ABI = CONTRACT_ABI;
+
+type FarmerInfo = {
   name: string;
-  category: string;
-  farmLocation: string;
-  isOrganic: boolean;
-  registeredAt: number;
+  location: string;
+  certId: string;
+  isVerified: boolean;
 };
 
 export default function Dashboard() {
   const { account } = useWeb3();
   const [txLoading, setTxLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
-  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [products, setProducts] = useState<string[]>([]);
   const [totalProducts, setTotalProducts] = useState(0);
-  const [farmerInfo, setFarmerInfo] = useState<{ name: string; location: string; certId: string; isVerified: boolean } | null>(null);
+  const [farmerInfo, setFarmerInfo] = useState<FarmerInfo | null>(null);
   const [farmerStatus, setFarmerStatus] = useState("Not Registered");
 
   // Register farmer form
@@ -48,66 +50,89 @@ export default function Dashboard() {
 
   const [addProductOpen, setAddProductOpen] = useState(false);
 
-  const loadFarmerStatus = useCallback(async (address: string) => {
+  const checkFarmerStatus = useCallback(async (walletAddress: string) => {
     try {
-      const contract = await getContract();
-      const farmer = await contract.farmers(address);
-      if (farmer.isVerified === true) {
+      const ethereum = (window as Window & { ethereum?: ethers.Eip1193Provider }).ethereum;
+      if (!ethereum) {
+        throw new Error("MetaMask not detected. Please install MetaMask.");
+      }
+
+      const provider = new ethers.BrowserProvider(ethereum);
+
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        ABI,
+        provider
+      );
+
+      const result = await contract.farmers(
+        walletAddress
+      );
+
+      console.log("Full farmer result:", result);
+      console.log("name:", result[0]);
+      console.log("location:", result[1]);
+      console.log("certId:", result[2]);
+      console.log("isVerified:", result[3]);
+      console.log("registeredAt:", result[4]);
+
+      const isVerified = result[3];
+
+      if (isVerified === true) {
         setFarmerStatus("Registered");
       } else {
         setFarmerStatus("Not Registered");
       }
+
       setFarmerInfo({
-        name: farmer.name,
-        location: farmer.location,
-        certId: farmer.certificationId,
-        isVerified: farmer.isVerified,
+        name: result[0] ?? "",
+        location: result[1] ?? "",
+        certId: result[2] ?? "",
+        isVerified: Boolean(result[3]),
       });
-    } catch (error: any) {
+    } catch (error) {
+      console.error("Error:", error);
       setFarmerStatus("Not Registered");
       setFarmerInfo(null);
-      if (error?.message) {
-        console.warn("Failed to load farmer status:", error.message);
-      }
     }
   }, []);
 
-  const loadProducts = useCallback(async (address: string) => {
+  const loadProducts = useCallback(async (walletAddress: string) => {
     try {
-      const contract = await getContract();
-      const productIds: string[] = await contract.getFarmerProducts(address);
-      const productData = await Promise.all(
-        productIds.map(async (id) => {
-          const p = await contract.getProduct(id);
-          return {
-            productId: p.productId,
-            name: p.name,
-            category: p.category,
-            farmLocation: p.farmLocation,
-            isOrganic: p.isOrganic,
-            registeredAt: Number(p.registeredAt),
-          };
-        })
+      const ethereum = (window as Window & { ethereum?: ethers.Eip1193Provider }).ethereum;
+      if (!ethereum) {
+        throw new Error("MetaMask not detected. Please install MetaMask.");
+      }
+
+      const provider = new ethers.BrowserProvider(ethereum);
+
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        ABI,
+        provider
       );
-      setProducts(productData);
+
+      const productIds = await contract.getFarmerProducts(walletAddress);
+
+      console.log("Products:", productIds);
+
+      setProducts(productIds);
       setTotalProducts(productIds.length);
-    } catch (error: any) {
+    } catch (error) {
+      console.error("Error:", error);
       setProducts([]);
       setTotalProducts(0);
-      if (error?.message) {
-        console.warn("Failed to load products:", error.message);
-      }
     }
   }, []);
 
   const loadDashboardData = useCallback(async (address: string) => {
     setDataLoading(true);
     try {
-      await Promise.all([loadFarmerStatus(address), loadProducts(address)]);
+      await Promise.all([checkFarmerStatus(address), loadProducts(address)]);
     } finally {
       setDataLoading(false);
     }
-  }, [loadFarmerStatus, loadProducts]);
+  }, [checkFarmerStatus, loadProducts]);
 
   useEffect(() => {
     if (!account) {
@@ -117,6 +142,7 @@ export default function Dashboard() {
       setTotalProducts(0);
       return;
     }
+
     loadDashboardData(account);
   }, [account, loadDashboardData]);
 
@@ -143,7 +169,7 @@ export default function Dashboard() {
       setFarmerName("");
       setFarmerLocation("");
       setFarmerCert("");
-      await loadFarmerStatus(account);
+      await Promise.all([checkFarmerStatus(account), loadProducts(account)]);
     } catch (err: any) {
       toast.error(err?.reason || err?.message || "Transaction failed");
     } finally {
@@ -178,7 +204,7 @@ export default function Dashboard() {
       setProdCert("");
       setProdImage("");
       setAddProductOpen(false);
-      await loadProducts(account);
+      await Promise.all([checkFarmerStatus(account), loadProducts(account)]);
     } catch (err: any) {
       toast.error(err?.reason || err?.message || "Transaction failed");
     } finally {
@@ -202,7 +228,7 @@ export default function Dashboard() {
           {[
             { icon: Package, label: "Total Products", value: totalProducts, color: "text-primary" },
             { icon: UserCheck, label: "Status", value: dataLoading ? "Loading..." : farmerStatus, color: "text-secondary" },
-            { icon: Clock, label: "Verified", value: products.filter(p => p?.isOrganic).length, color: "text-accent" },
+            { icon: Clock, label: "Verified", value: farmerInfo?.isVerified ? "Yes" : "No", color: "text-accent" },
           ].map((s) => (
             <Card key={s.label} className="glass">
               <CardContent className="pt-6 flex items-center gap-4">
@@ -262,7 +288,7 @@ export default function Dashboard() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="font-heading">Products</CardTitle>
-                <CardDescription>Your registered organic products</CardDescription>
+                <CardDescription>Your registered products from getFarmerProducts</CardDescription>
               </div>
               <Dialog open={addProductOpen} onOpenChange={setAddProductOpen}>
                 <DialogTrigger asChild>
@@ -332,23 +358,17 @@ export default function Dashboard() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Location</TableHead>
+                        <TableHead>Product ID</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {products.map((p) => (
-                        <TableRow key={p.productId}>
-                          <TableCell className="font-mono text-xs">{p.productId}</TableCell>
-                          <TableCell className="font-medium">{p.name}</TableCell>
-                          <TableCell className="capitalize">{p.category}</TableCell>
-                          <TableCell>{p.farmLocation}</TableCell>
+                      {products.map((productId) => (
+                        <TableRow key={productId}>
+                          <TableCell className="font-mono text-xs">{productId}</TableCell>
                           <TableCell>
-                            <Badge variant={p.isOrganic ? "default" : "secondary"} className={p.isOrganic ? "bg-secondary text-secondary-foreground" : ""}>
-                              {p.isOrganic ? "Organic ✓" : "Pending"}
+                            <Badge variant="default" className="bg-secondary text-secondary-foreground">
+                              Loaded ✓
                             </Badge>
                           </TableCell>
                         </TableRow>
